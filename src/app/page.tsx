@@ -1,95 +1,94 @@
-import Image from 'next/image'
+'use client'
+import { useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Perf } from 'r3f-perf'
 import styles from './page.module.css'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import checkGPU from '../utils/checkGPU'
+
+
+const rowNum = 10;
 
 export default function Home() {
+  const [frameloop, setFrameloop] = useState<
+    "never" | "always" | "demand" | undefined
+  >("never");
+  const [rendererType, setRenderType] = useState("");
+
+  
+  const boxes = useMemo(() => {
+    return getBoxes()
+  },[])
+
   return (
     <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+      {rendererType}
+      <Canvas
+        id="r3fCanvas"
+        frameloop={frameloop}
+        gl={ async (canvas) => {
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+          const renderer: any = await checkGPU(canvas);
+          if (renderer) {
+            setRenderType("WEBGPU Renderer")
+            setFrameloop("always");
+            return renderer;
+          } else {
+            setRenderType("WEBGL Renderer")
+            setFrameloop("always");
+          }          
+        }}
+      >
+        <PerspectiveCamera makeDefault position={[0,0,50]} />
+        <ambientLight />
+        <directionalLight position={[10, 10, 10]} />
+        {boxes}
+        <Perf />
+        <OrbitControls />
+      </Canvas>
     </main>
+  )
+}
+
+const getBoxes = () => {
+  let boxes = []
+  for(let i = 0;i<rowNum;i++) {
+    const boxRow = (
+      <>
+        <Box key={`box_1_${i}`} position={[-14, i * 4 - 18, 0]} />
+        <Box key={`box_2_${i}`} position={[-10, i * 4 - 18, 0]} />
+        <Box key={`box_3_${i}`} position={[-6, i * 4 - 18, 0]} />
+        <Box key={`box_4_${i}`} position={[-2, i * 4 - 18, 0]} />
+        <Box key={`box_5_${i}`} position={[2, i * 4 - 18, 0]} />
+        <Box key={`box_6_${i}`} position={[6, i * 4 - 18, 0]} />
+        <Box key={`box_7_${i}`} position={[10, i * 4 - 18, 0]} />
+        <Box key={`box_8_${i}`} position={[14, i * 4 - 18, 0]} />
+      </>
+    )
+    boxes.push(boxRow)
+  }
+  return boxes
+}
+
+const Box = (props) => {
+  // This reference gives us direct access to the THREE.Mesh object
+  const ref = useRef()
+  // Hold state for hovered and clicked events
+  const [hovered, hover] = useState(false)
+  const [clicked, click] = useState(false)
+  // Subscribe this component to the render-loop, rotate the mesh every frame
+  useFrame((state, delta) => (ref.current.rotation.x += delta))
+  // Return the view, these are regular Threejs elements expressed in JSX
+  return (
+    <mesh
+      {...props}
+      ref={ref}
+      scale={clicked ? 1.5 : 1}
+      onClick={(event) => click(!clicked)}
+      onPointerOver={(event) => hover(true)}
+      onPointerOut={(event) => hover(false)}>
+      <boxGeometry args={[2, 2, 2]} />
+      <meshPhysicalMaterial color={hovered ? 'hotpink' : 'orange'} />
+    </mesh>
   )
 }
