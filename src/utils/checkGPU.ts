@@ -1,30 +1,27 @@
-const getAdapter = async (gpu) => {
-    return await gpu.requestAdapter();
-}
-  
 const checkGPU = async (canvas) => {
 
-    const rendererPromise = await new Promise((resolve) => {
-        if ( "gpu" in navigator === false ) return null;
-
-            resolve(
-            import('three/examples/jsm/renderers/webgpu/WebGPURenderer.js')
-                .then(({default: WebGPURenderer}) => {
-                    return new WebGPURenderer({ canvas });
-                })
-            ).catch((error) => {
-                console.error('WebGPU is disabled by blocklist: ', error);
-                return null;
-                // Perform fallback actions here, such as switching to a different renderer
-            });
-    })
-
-    const adapter = await getAdapter(navigator.gpu);
+    if ("gpu" in navigator === false) return null
+    const adapter = await navigator.gpu.requestAdapter().catch((err) => {
+        console.log(err)
+        return null;
+    });
     if ( !adapter ) return null;
     const device = await adapter.requestDevice();
+    if ( !device ) return null;
 
-    const isGPUReady = adapter && device && rendererPromise;
-    return isGPUReady ? rendererPromise : null;
+    const rendererPromise = await new Promise((resolve) => {
+        resolve(
+        import('three/examples/jsm/renderers/webgpu/WebGPURenderer.js')
+            .then(({default: WebGPURenderer}) => {
+                return new WebGPURenderer({ canvas });
+            })
+        )
+    }).catch((error) => {
+        console.log(error);
+        return null;
+    });
+
+    return rendererPromise;
 }
 
 export default checkGPU
